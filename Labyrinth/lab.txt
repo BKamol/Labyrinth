@@ -1,0 +1,18 @@
+Number of circles:
+4
+Position of doors:
+Outer Circle:
+90-95
+Next inner circle:
+26-40 128-133 198-215 305-319
+Next inner circle:
+67-90 161-180 243-256 342-360
+Inermost circle:
+251-288
+Position of walls:
+Outer ring:
+45 135 300
+Middle ring:
+0 100 255 270
+Inner ring:
+65 180
