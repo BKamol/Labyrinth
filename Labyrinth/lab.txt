@@ -13,6 +13,6 @@ Position of walls:
 Outer ring:
 45 135 300
 Middle ring:
-0 100 255 270
+0 100 235 270
 Inner ring:
 65 180

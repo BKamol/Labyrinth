@@ -6,12 +6,22 @@
 
 using namespace std;
 
-struct Vertex
-{
-    int start, end, ring; //границы и кольцо
-    Vertex(int _start=0, int _end=360, int _ring=-1) { start = _start; end = _end; ring = _ring; };
-    Vertex(Vertex& other) { start = other.start, end = other.end, ring = other.ring; };
-};
+typedef pair<pair<int, int>, int> Vertex;
+
+//struct Vertex
+//{
+//    int start, end, ring; //границы и кольцо
+//    Vertex(int _start=0, int _end=360, int _ring=-1) { start = _start; end = _end; ring = _ring; };
+//    Vertex(const Vertex& other) { start = other.start, end = other.end, ring = other.ring; };
+//    bool operator<(const Vertex& other) const noexcept
+//    {
+//        return this->start < other.start && this->end < other.end && this->ring == other.ring;
+//    }
+//    bool operator=(const Vertex& other) const noexcept
+//    {
+//        return this->start == other.start && this->end == other.end && this->ring == other.ring;
+//    }
+//};
  
 vector<string> customSplit(string str, char separator) 
 {
@@ -31,11 +41,10 @@ vector<string> customSplit(string str, char separator)
     return strings;
 }
 
-void labyrinth(string filename, map<int, vector<pair<int, int>> >& doors,  map<int, vector<int>>& walls)
+void labyrinth(string filename, map<int, vector<pair<int, int>> >& doors,  map<int, vector<int>>& walls, int& number_of_circles)
 {
     ifstream in(filename);
     string line;
-    int number_of_circles;
     vector<string> string_vector;
     vector<string> coords_vector;
     pair<int, int> coords_pair;
@@ -97,7 +106,7 @@ void labyrinth(string filename, map<int, vector<pair<int, int>> >& doors,  map<i
     in.close();
 }
 
-map<int, vector<pair<int, int>>> get_verticies(map<int, vector<int>>& walls)
+map<int, vector<pair<int, int>>> get_verticies(map<int, vector<int>>& walls, int number_of_circles)
 {
     map<int, vector<pair<int, int>>> verts;
     pair<int, int> vert;
@@ -111,48 +120,62 @@ map<int, vector<pair<int, int>>> get_verticies(map<int, vector<int>>& walls)
         verts[ring].push_back({ walls_vec[walls_vec.size() - 1], walls_vec[0] });
     }
     verts[-1] = { { 0, 360 } }; //выход
+    verts[number_of_circles-1] = { {0, 360} };
     return verts;
 }
 
-pair<Vertex, Vertex> get_adj_verts(pair<int, int> door, map<int, vector<pair<int, int>>>& verts, int circle)
+vector<Vertex> get_adj_verts(pair<int, int> door, int circle, map<int, vector<pair<int, int>>>& verts)
 {
     int outer_ring = circle-1;
     int inner_ring = circle;
-    Vertex v1;
-    Vertex v2;
+    vector<Vertex> adj_verts;
     for (auto& [start, end] : verts[outer_ring])
     {
-        if (start <= door.first && door.second <= end)
-            v1 = { start, end, outer_ring };
+        if (start <= door.first && door.second <= end || 
+            (start >= end && (start <= door.first && door.second <= (end + 360) || (0 <= door.first && door.second <= end))))
+            adj_verts.push_back({ {start, end}, outer_ring });
     }
     for (auto& [start, end] : verts[inner_ring])
     {
-        if (start <= door.first && door.second <= end)
-            v2 = { start, end, inner_ring };
+        if (start <= door.first && door.second <= end || 
+            (start >= end && (start <= door.first && door.second <= (end + 360) || (0 <= door.first && door.second <= end))))
+            adj_verts.push_back({ {start, end}, inner_ring });
     }
-    return { v1, v2 };
+    return adj_verts;
 }
 
-//map<Vertex, vector<Vertex>> get_adj_lists(map<int, vector<pair<int, int>> >& doors, map<int, vector<pair<int, int>>>& verts)
-//{
-//    map<Vertex, vector<Vertex>> adj_lists;
-//    for (auto& [circle, doors_vec] : doors)
-//    {
-//        for (auto& door : doors_vec)
-//        {
-//
-//        }
-//    }
-//    return;
-//}
+map<Vertex, vector<Vertex>> get_adj_lists(map<int, vector<pair<int, int>> >& doors, map<int, vector<pair<int, int>>>& verts)
+{
+    map<Vertex, vector<Vertex>> adj_lists;
+    vector<Vertex> adj_verts;
+    Vertex v1;
+    Vertex v2;
+    int adj_verts_num;
+    for (auto& [circle, doors_vec] : doors) //для каждой двери найдем смежные комнаты, на их основе сформируем списки смежности
+    {
+        for (auto& door : doors_vec)
+        {
+            adj_verts = get_adj_verts(door, circle, verts);
+
+            v1 = adj_verts[0];
+            v2 = adj_verts[1];
+            adj_lists[v1].push_back(v2);
+            adj_lists[v2].push_back(v1);
+
+        }
+    }
+    return adj_lists;
+}
 
 int main()
 {
     map<int, vector<pair<int, int>> > doors;        //у двери есть границы и номер окружности
     map<int, vector<int> > walls;                   //у стен есть координата и номер кольца
     map<int, vector<pair<int, int>>> verts;         //вершина - комната между двумя стенами, а ребра - двери
+    map<Vertex, vector<Vertex>> adj_lists;          //списки смежности
+    int number_of_circles;
 
-    labyrinth("lab.txt", doors, walls);
+    labyrinth("lab.txt", doors, walls, number_of_circles);
 
     /*cout << endl;
     for (auto& [circle, door] : doors)
@@ -171,7 +194,7 @@ int main()
         cout << endl;
     }*/
     
-    verts = get_verticies(walls);
+    verts = get_verticies(walls, number_of_circles);
 
     /*cout << endl;
     for (auto& [ring, walls_vec] : verts)
@@ -182,8 +205,20 @@ int main()
         cout << endl;
     }*/
 
+    /*cout << endl;
+    vector<Vertex> adj = get_adj_verts({ 26, 40 }, 1, verts);
+    for (auto& v : adj)
+        cout << v.first.first << ' ' << v.first.second << ' ' << v.second << ", ";*/
+
+
+    adj_lists = get_adj_lists(doors, verts);
+
     cout << endl;
-    pair<Vertex, Vertex> adj = get_adj_verts({ 128, 133 }, verts, 1);
-    cout << adj.first.start << ' ' << adj.first.end << ' ' << adj.first.ring << endl;
-    cout << adj.second.start << ' ' << adj.second.end << ' ' << adj.second.ring << endl;
+    for (auto& [room, rooms_vec] : adj_lists)
+    {
+        cout << '(' << room.first.first << ',' << room.first.second << ',' << room.second << "): ";
+        for (auto& c : rooms_vec)
+            cout << '(' << c.first.first << ',' << c.first.second << ',' << c.second << ") ";
+        cout << endl;
+    }
 }
