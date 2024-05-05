@@ -3,25 +3,13 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <queue>
+#include <set>
 
 using namespace std;
 
 typedef pair<pair<int, int>, int> Vertex;
-
-//struct Vertex
-//{
-//    int start, end, ring; //границы и кольцо
-//    Vertex(int _start=0, int _end=360, int _ring=-1) { start = _start; end = _end; ring = _ring; };
-//    Vertex(const Vertex& other) { start = other.start, end = other.end, ring = other.ring; };
-//    bool operator<(const Vertex& other) const noexcept
-//    {
-//        return this->start < other.start && this->end < other.end && this->ring == other.ring;
-//    }
-//    bool operator=(const Vertex& other) const noexcept
-//    {
-//        return this->start == other.start && this->end == other.end && this->ring == other.ring;
-//    }
-//};
+typedef pair<Vertex, Vertex> Edge;
  
 vector<string> customSplit(string str, char separator) 
 {
@@ -167,6 +155,60 @@ map<Vertex, vector<Vertex>> get_adj_lists(map<int, vector<pair<int, int>> >& doo
     return adj_lists;
 }
 
+vector<Edge> bfs(const map<Vertex, vector<Vertex>>& adj_lists, const Vertex& start)
+{
+    set<Vertex> visited;
+    vector<Edge> from;
+    queue<Vertex> q;
+    vector<Vertex> adjs;
+    bool found_exit = 0;
+    Vertex exit = { {0, 360}, -1 };
+
+    q.push(start);
+
+    while (!q.empty() && !found_exit)
+    {
+        Vertex v = q.front();
+        q.pop();
+
+        visited.insert(v);
+
+        //костыльчик, потому что adj_lists[v] выдает ошибку
+        for (auto& [vert, vert_vec] : adj_lists)
+        {
+            if (vert == v)
+            {
+                adjs = vert_vec;
+                break;
+            }
+        }
+
+        for (auto& to : adjs)
+        {
+            if (visited.count(to) == 0)
+            {
+                from.push_back({ v, to });
+                q.push(to);
+
+                if (to == exit)
+                    found_exit = true;
+            }
+        }
+    }
+
+    return from;
+}
+
+void print_path(vector<Edge>& from, Vertex room={{0, 360}, -1})
+{
+    for (auto& edge : from)
+    {
+        if (edge.second == room)
+            print_path(from, edge.first);
+    }
+    cout << '(' << room.first.first << ' ' << room.first.second << ' ' << room.second << ") ";
+}
+
 int main()
 {
     map<int, vector<pair<int, int>> > doors;        //у двери есть границы и номер окружности
@@ -221,4 +263,14 @@ int main()
             cout << '(' << c.first.first << ',' << c.first.second << ',' << c.second << ") ";
         cout << endl;
     }
+
+    vector<Edge> from = bfs(adj_lists, { {0, 360}, number_of_circles-1 });
+
+    cout << endl;
+    /*for (const Edge& el : from)
+    {
+        cout << '(' << el.first.first.first << ' ' << el.first.first.second << ' ' << el.first.second << ')' << '-';
+        cout << '(' << el.second.first.first << ' ' << el.second.first.second << ' ' << el.second.second << ") ";
+    }*/
+    print_path(from);
 }
